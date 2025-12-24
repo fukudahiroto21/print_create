@@ -1,30 +1,32 @@
 from http.server import BaseHTTPRequestHandler
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 import io
 import os
+from PIL import Image
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # PNG のパス（リポジトリ直下基準）
+        # PNGパス
         img_path = os.path.join("assets", "School Print.png")
 
-        # PDF をメモリ上で生成
+        # PNGをPillowで読み込み
+        img = Image.open(img_path)
+        width_px, height_px = img.size
+
+        # PDFをPNGと同じサイズで作成
         buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=A4)
+        c = canvas.Canvas(buffer, pagesize=(width_px, height_px))
 
-        img = ImageReader(img_path)
-        page_width, page_height = A4
+        pdf_img = ImageReader(img_path)
 
-        # 画像をページいっぱいに配置（比率はそのまま）
+        # 左下(0,0)からピッタリ描画
         c.drawImage(
-            img,
+            pdf_img,
             0, 0,
-            width=page_width,
-            height=page_height,
-            preserveAspectRatio=True,
-            mask='auto'
+            width=width_px,
+            height=height_px,
+            mask="auto"
         )
 
         c.showPage()
@@ -33,12 +35,11 @@ class handler(BaseHTTPRequestHandler):
         pdf_bytes = buffer.getvalue()
         buffer.close()
 
-        # レスポンス
         self.send_response(200)
         self.send_header("Content-Type", "application/pdf")
         self.send_header(
             "Content-Disposition",
-            'attachment; filename="output.pdf"'
+            'attachment; filename="print.pdf"'
         )
         self.end_headers()
         self.wfile.write(pdf_bytes)
