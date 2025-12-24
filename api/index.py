@@ -4,34 +4,39 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
-import base64
+from reportlab.lib.pagesizes import A4, landscape
+import os
 
 def handler(request):
-    # PDFをメモリ上に作成
+    # PDFをメモリ上に作成（横向きA4）
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=(595, 842))  # A4縦
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))  # 横向き
 
-    # PNG背景を載せる場合
-    img = ImageReader("assets/School Print.png")
-    c.drawImage(img, 0, 0, width=595, height=842)
+    # assetsフォルダのパスを計算（apiから見た相対パス）
+    base_path = os.path.join(os.path.dirname(__file__), "../assets")
+    png_path = os.path.join(base_path, "School Print.png")
+    font_path = os.path.join(base_path, "ipaexg.ttf")
+
+    # PNG背景を載せる
+    img = ImageReader(png_path)
+    page_width, page_height = landscape(A4)
+    c.drawImage(img, 0, 0, width=page_width, height=page_height)
 
     # 日本語フォント埋め込み
-    pdfmetrics.registerFont(TTFont("IPAexGothic", "assets/ipaexg.ttf"))
+    pdfmetrics.registerFont(TTFont("IPAexGothic", font_path))
     c.setFont("IPAexGothic", 24)
-    c.drawString(100, 800, "こんにちは、世界！")
+    c.drawString(50, page_height - 50, "こんにちは、世界！")  # 左上に文字
 
     c.showPage()
     c.save()
+    buffer.seek(0)
 
-    # PDFをbase64に変換
-    pdf_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-
+    # PDFを直接返す（Base64変換不要）
     return {
         "statusCode": 200,
         "headers": {
             "Content-Type": "application/pdf",
             "Content-Disposition": "inline; filename=output.pdf"
         },
-        "body": pdf_base64,
-        "isBase64Encoded": True
+        "body": buffer.getvalue()
     }
