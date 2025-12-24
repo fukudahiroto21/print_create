@@ -1,4 +1,4 @@
-from flask import Flask, make_response, jsonify
+from flask import Flask, make_response, jsonify, request
 import os
 import sys
 import traceback
@@ -16,28 +16,39 @@ def handle_error(e):
 
 def get_asset_paths():
     """アセットファイルのパスを取得"""
-    # api/index.py の位置を基準にする
-    current_file = os.path.abspath(__file__)
-    api_dir = os.path.dirname(current_file)
-    project_root = os.path.dirname(api_dir)
-    assets_dir = os.path.join(project_root, "assets")
-    
-    return {
-        'current_file': current_file,
-        'api_dir': api_dir,
-        'project_root': project_root,
-        'assets_dir': assets_dir,
-        'png_path': os.path.join(assets_dir, "School Print.png"),
-        'font_path': os.path.join(assets_dir, "ipaexg.ttf")
-    }
+    try:
+        # api/index.py の位置を基準にする
+        current_file = os.path.abspath(__file__)
+        api_dir = os.path.dirname(current_file)
+        project_root = os.path.dirname(api_dir)
+        assets_dir = os.path.join(project_root, "assets")
+        
+        return {
+            'current_file': current_file,
+            'api_dir': api_dir,
+            'project_root': project_root,
+            'assets_dir': assets_dir,
+            'png_path': os.path.join(assets_dir, "School Print.png"),
+            'font_path': os.path.join(assets_dir, "ipaexg.ttf")
+        }
+    except Exception as e:
+        return {
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }
 
 @app.route('/api/debug')
+@app.route('/api/debug/')
 def debug():
     """デバッグ情報を表示"""
     try:
         paths = get_asset_paths()
         
+        if 'error' in paths:
+            return jsonify(paths), 500
+        
         debug_info = {
+            'status': 'debug endpoint working',
             'current_working_directory': os.getcwd(),
             'current_file': paths['current_file'],
             'api_directory': paths['api_dir'],
@@ -76,7 +87,27 @@ def debug():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/api/test')
+@app.route('/api/test/')
+def test():
+    """簡易テストエンドポイント"""
+    try:
+        return jsonify({
+            'status': 'ok',
+            'message': 'API is working',
+            'python_version': sys.version,
+            'cwd': os.getcwd(),
+            '__file__': __file__ if '__file__' in globals() else 'not available',
+            'environment': dict(os.environ)
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/api')
+@app.route('/api/')
 def handler():
     """PDF生成エンドポイント"""
     try:
@@ -90,6 +121,18 @@ def handler():
         
         # パス取得
         paths = get_asset_paths()
+        
+        if 'error' in paths:
+            c.setFont("Helvetica", 12)
+            c.drawString(50, page_height - 50, f"Path error: {paths['error']}")
+            c.showPage()
+            c.save()
+            pdf_value = buffer.getvalue()
+            buffer.close()
+            response = make_response(pdf_value)
+            response.headers['Content-Type'] = 'application/pdf'
+            return response
+        
         png_path = paths['png_path']
         font_path = paths['font_path']
         
@@ -126,7 +169,8 @@ def handler():
             c.drawString(50, y_pos, f"Assets dir exists: {os.path.exists(paths['assets_dir'])}")
             y_pos -= 20
             if os.path.exists(paths['assets_dir']):
-                c.drawString(50, y_pos, f"Assets contents: {os.listdir(paths['assets_dir'])}")
+                contents = str(os.listdir(paths['assets_dir']))[:80]
+                c.drawString(50, y_pos, f"Assets contents: {contents}")
             y_pos -= 20
             c.drawString(50, y_pos, f"Project root: {paths['project_root']}")
         
@@ -169,16 +213,9 @@ def handler():
             'traceback': traceback.format_exc()
         }), 500
 
-@app.route('/api/test')
-def test():
-    """簡易テストエンドポイント"""
-    return jsonify({
-        'status': 'ok',
-        'message': 'API is working',
-        'python_version': sys.version,
-        'cwd': os.getcwd(),
-        '__file__': __file__
-    })
+# Vercel用: appオブジェクトをエクスポート
+# この行が重要！
+handler_app = app
 
 # ローカル開発用
 if __name__ == '__main__':
