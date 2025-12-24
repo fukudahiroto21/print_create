@@ -1,14 +1,18 @@
 from flask import Flask, make_response, jsonify
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.utils import ImageReader
-from reportlab.lib.pagesizes import A4, landscape
 import os
+import sys
 import traceback
 
 app = Flask(__name__)
+
+# Vercel用のエラーハンドリング
+@app.errorhandler(Exception)
+def handle_error(e):
+    return jsonify({
+        'error': str(e),
+        'traceback': traceback.format_exc(),
+        'type': type(e).__name__
+    }), 500
 
 def get_asset_paths():
     """アセットファイルのパスを取得"""
@@ -75,35 +79,40 @@ def debug():
 @app.route('/api')
 def handler():
     """PDF生成エンドポイント"""
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=landscape(A4))
-    page_width, page_height = landscape(A4)
-    
-    # パス取得
-    paths = get_asset_paths()
-    png_path = paths['png_path']
-    font_path = paths['font_path']
-    
-    # デバッグログ出力（Vercelのログに記録される）
-    print("="*50)
-    print("PDF Generation Started")
-    print(f"Current working directory: {os.getcwd()}")
-    print(f"Project root: {paths['project_root']}")
-    print(f"Assets directory: {paths['assets_dir']}")
-    print(f"PNG path: {png_path}")
-    print(f"PNG exists: {os.path.exists(png_path)}")
-    print(f"Font path: {font_path}")
-    print(f"Font exists: {os.path.exists(font_path)}")
-    
-    if os.path.exists(paths['assets_dir']):
-        print(f"Assets directory contents: {os.listdir(paths['assets_dir'])}")
-    else:
-        print("Assets directory does not exist!")
-    print("="*50)
-    
     try:
+        from io import BytesIO
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import A4, landscape
+        
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=landscape(A4))
+        page_width, page_height = landscape(A4)
+        
+        # パス取得
+        paths = get_asset_paths()
+        png_path = paths['png_path']
+        font_path = paths['font_path']
+        
+        # デバッグログ出力（Vercelのログに記録される）
+        print("="*50)
+        print("PDF Generation Started")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"Project root: {paths['project_root']}")
+        print(f"Assets directory: {paths['assets_dir']}")
+        print(f"PNG path: {png_path}")
+        print(f"PNG exists: {os.path.exists(png_path)}")
+        print(f"Font path: {font_path}")
+        print(f"Font exists: {os.path.exists(font_path)}")
+        
+        if os.path.exists(paths['assets_dir']):
+            print(f"Assets directory contents: {os.listdir(paths['assets_dir'])}")
+        else:
+            print("Assets directory does not exist!")
+        print("="*50)
+        
         # PNG背景の描画
         if os.path.exists(png_path):
+            from reportlab.lib.utils import ImageReader
             print("Drawing PNG background...")
             img = ImageReader(png_path)
             c.drawImage(img, 0, 0, width=page_width, height=page_height)
@@ -123,6 +132,8 @@ def handler():
         
         # 日本語フォント設定
         if os.path.exists(font_path):
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
             print("Registering Japanese font...")
             pdfmetrics.registerFont(TTFont("IPAexGothic", font_path))
             c.setFont("IPAexGothic", 24)
@@ -135,38 +146,28 @@ def handler():
             c.setFont("Helvetica", 10)
             c.drawString(50, page_height - 80, f"Font path: {font_path}")
             
+        c.showPage()
+        c.save()
+        
+        pdf_value = buffer.getvalue()
+        buffer.close()
+        
+        print("PDF generation completed")
+        print("="*50)
+        
+        response = make_response(pdf_value)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'inline; filename=output.pdf'
+        
+        return response
+        
     except Exception as e:
-        print(f"Error during PDF generation: {str(e)}")
+        print(f"Error in handler: {str(e)}")
         print(traceback.format_exc())
-        
-        # エラー情報をPDFに描画
-        c.setFont("Helvetica", 12)
-        y_pos = page_height - 100
-        c.drawString(50, y_pos, f"Error: {str(e)}")
-        y_pos -= 20
-        
-        # エラー詳細を複数行で表示
-        error_lines = traceback.format_exc().split('\n')
-        for line in error_lines[:10]:  # 最初の10行のみ
-            if line.strip():
-                c.setFont("Helvetica", 8)
-                c.drawString(50, y_pos, line[:100])  # 100文字まで
-                y_pos -= 15
-    
-    c.showPage()
-    c.save()
-    
-    pdf_value = buffer.getvalue()
-    buffer.close()
-    
-    print("PDF generation completed")
-    print("="*50)
-    
-    response = make_response(pdf_value)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = 'inline; filename=output.pdf'
-    
-    return response
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 @app.route('/api/test')
 def test():
@@ -174,7 +175,9 @@ def test():
     return jsonify({
         'status': 'ok',
         'message': 'API is working',
-        'python_version': os.sys.version
+        'python_version': sys.version,
+        'cwd': os.getcwd(),
+        '__file__': __file__
     })
 
 # ローカル開発用
