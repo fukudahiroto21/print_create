@@ -1,33 +1,45 @@
 from http.server import BaseHTTPRequestHandler
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from PIL import Image
 import io
 import os
-from PIL import Image
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # PNGパス
-        img_path = os.path.join("assets", "School Print.png")
+        base_dir = os.getcwd()
+        img_path = os.path.join(base_dir, "assets", "School_Print.png")
+        font_path = os.path.join(base_dir, "assets", "ipaexg.ttf")
 
-        # PNGをPillowで読み込み
+        # PNGサイズ取得
         img = Image.open(img_path)
-        width_px, height_px = img.size
+        width, height = img.size
 
-        # PDFをPNGと同じサイズで作成
         buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=(width_px, height_px))
+        c = canvas.Canvas(buffer, pagesize=(width, height))
 
-        pdf_img = ImageReader(img_path)
+        # フォント登録（＝埋め込み）
+        pdfmetrics.registerFont(
+            TTFont("IPAexGothic", font_path)
+        )
 
-        # 左下(0,0)からピッタリ描画
+        # 背景画像
         c.drawImage(
-            pdf_img,
+            ImageReader(img_path),
             0, 0,
-            width=width_px,
-            height=height_px,
+            width=width,
+            height=height,
             mask="auto"
         )
+
+        # フォント指定
+        c.setFont("IPAexGothic", 60)
+
+        # 日本語テキスト描画
+        c.drawString(120, height - 200, "なまえ：")
+        c.drawString(120, height - 300, "５ + ３ =")
 
         c.showPage()
         c.save()
