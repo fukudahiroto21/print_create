@@ -1,4 +1,4 @@
-# api/index.py
+from flask import Flask, make_response
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -7,36 +7,50 @@ from reportlab.lib.utils import ImageReader
 from reportlab.lib.pagesizes import A4, landscape
 import os
 
-def handler(request):
-    # PDFをメモリ上に作成（横向きA4）
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=landscape(A4))  # 横向き
+app = Flask(__name__)
 
-    # assetsフォルダのパスを計算（apiから見た相対パス）
+@app.route('/api')
+def handler():
+    # 1. PDFをメモリ上に作成
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    page_width, page_height = landscape(A4)
+
+    # 2. パスの設定
+    # Vercel環境ではプロジェクトルートからの相対パスに注意が必要
     base_path = os.path.join(os.path.dirname(__file__), "../assets")
     png_path = os.path.join(base_path, "School Print.png")
     font_path = os.path.join(base_path, "ipaexg.ttf")
 
-    # PNG背景を載せる
-    img = ImageReader(png_path)
-    page_width, page_height = landscape(A4)
-    c.drawImage(img, 0, 0, width=page_width, height=page_height)
+    # 3. 背景画像の描画（ファイルが存在する場合のみ）
+    if os.path.exists(png_path):
+        img = ImageReader(png_path)
+        c.drawImage(img, 0, 0, width=page_width, height=page_height)
 
-    # 日本語フォント埋め込み
-    pdfmetrics.registerFont(TTFont("IPAexGothic", font_path))
-    c.setFont("IPAexGothic", 24)
-    c.drawString(50, page_height - 50, "こんにちは、世界！")  # 左上に文字
+    # 4. フォントの設定と描画（ファイルが存在する場合のみ）
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont("IPAexGothic", font_path))
+        c.setFont("IPAexGothic", 24)
+        c.drawString(50, page_height - 50, "こんにちは、世界！")
+    else:
+        # フォントがない場合の予備
+        c.setFont("Helvetica", 24)
+        c.drawString(50, page_height - 50, "Font not found. Hello!")
 
     c.showPage()
     c.save()
-    buffer.seek(0)
+    
+    # 5. レスポンスの作成
+    pdf_value = buffer.getvalue()
+    buffer.close()
 
-    # PDFを直接返す（Base64変換不要）
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": "inline; filename=output.pdf"
-        },
-        "body": buffer.getvalue()
-    }
+    response = make_response(pdf_value)
+    response.headers['Content-Type'] = 'application/pdf'
+    # inlineにすることで、ブラウザで直接開くように指示します
+    response.headers['Content-Disposition'] = 'inline; filename=output.pdf'
+    
+    return response
+
+# ローカルデバッグ用
+if __name__ == "__main__":
+    app.run(debug=True)
