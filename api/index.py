@@ -1,53 +1,42 @@
+from flask import Flask, send_file, make_response
 from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.utils import ImageReader
-from io import BytesIO
+from reportlab.lib.pagesizes import landscape, A4
+import io
 from PIL import Image
-import os
-import base64
 
-def handler(request):
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def generate_pdf():
+    # PDF をメモリ上に作成
+    buffer = io.BytesIO()
+    
+    # A4横サイズに設定
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    
+    # PNG を背景にする場合
     try:
-        # PNG 読み込み
-        assets_path = os.path.join(os.path.dirname(__file__), '../assets/School Print.png')
-        bg_image = Image.open(assets_path)
-        width, height = bg_image.size
-
-        # PDF 作成（横向き）
-        buffer = BytesIO()
-        c = canvas.Canvas(buffer, pagesize=(width, height))
-
-        # 日本語フォント
-        font_path = os.path.join(os.path.dirname(__file__), '../assets/ipaexg.ttf')
-        pdfmetrics.registerFont(TTFont('IPAexG', font_path))
-        c.setFont("IPAexG", 24)
-
-        # PNG 描画
-        c.drawImage(ImageReader(bg_image), 0, 0, width=width, height=height)
-        c.drawString(50, height - 50, "こんにちは、Vercel PDF!")
-
-        c.showPage()
-        c.save()
-
-        pdf_data = buffer.getvalue()
-        buffer.close()
-
-        # Base64 エンコード
-        encoded_pdf = base64.b64encode(pdf_data).decode('utf-8')
-
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/pdf",
-                "Content-Disposition": "inline; filename=output.pdf"
-            },
-            "body": encoded_pdf,
-            "isBase64Encoded": True
-        }
-
+        img = Image.open("assets/School Print.png")  # assets フォルダに置いた画像
+        img_width, img_height = img.size
+        # ReportLab は左下原点、サイズをポイントに変換
+        c.drawImage("assets/School Print.png", 0, 0, width=img_width, height=img_height)
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": str(e)
-        }
+        print("画像読み込み失敗:", e)
+    
+    # 文字を書き込み（フォント埋め込み）
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    pdfmetrics.registerFont(TTFont("IPAexGothic", "assets/ipaexg.ttf"))
+    
+    c.setFont("IPAexGothic", 24)
+    c.drawString(100, 200, "こんにちは、世界！")  # サンプル文字
+    c.showPage()
+    c.save()
+
+    buffer.seek(0)
+    response = make_response(send_file(buffer, mimetype="application/pdf", download_name="output.pdf"))
+    response.headers["Content-Disposition"] = "inline; filename=output.pdf"  # ブラウザで開く
+    return response
+
+# Vercel は app を自動で認識
+app = app
