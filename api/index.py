@@ -78,4 +78,3 @@ def handler(request):
         },
         "body": pdf_data
     }
-V
