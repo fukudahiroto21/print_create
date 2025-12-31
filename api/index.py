@@ -43,9 +43,12 @@ def generate_pdf():
     ]
 
     # ===== レイアウト =====
+    rows = 5
+    cols = 2
+    
     top_y = page_height - 140
     bottom_y = 120
-    gap = (top_y - bottom_y) / 9
+    rowgap = (top_y - bottom_y) / 9
     start_x = 140
 
     # ===== 問題描画 =====
