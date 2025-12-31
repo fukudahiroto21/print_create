@@ -48,13 +48,21 @@ def generate_pdf():
     
     top_y = page_height - 140
     bottom_y = 120
-    rowgap = (top_y - bottom_y) / 9
+    row_gap = (top_y - bottom_y) / (rows - 1)
+    
     start_x = 140
-
+    col_gap = 300
+    
     # ===== 問題描画 =====
     for i, (a, b) in enumerate(problems, start=1):
-        y = top_y - gap * (i - 1)
-        c.drawString(start_x, y, f"{i}． {a} + {b}")
+        index = i - 1
+        row = index % rows
+        col = index // rows
+
+        x = star_x + col * col_gap
+        y = top_y - row * row_gap
+        
+        c.drawString(x, y, f"{i}． {a} + {b}")
 
     # ===== PDF確定 =====
     c.showPage()
