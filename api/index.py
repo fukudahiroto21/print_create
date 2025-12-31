@@ -59,7 +59,7 @@ def generate_pdf():
         row = index % rows
         col = index // rows
 
-        x = star_x + col * col_gap
+        x = start_x + col * col_gap
         y = top_y - row * row_gap
         
         c.drawString(x, y, f"{i}． {a} + {b}")
