@@ -1,13 +1,14 @@
 from io import BytesIO
 import os
 import random
-import base64
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+
+from vercel import Response   # ← これが決定打
 
 
 def handler(request):
@@ -46,12 +47,10 @@ def handler(request):
     pdf_bytes = buffer.getvalue()
     buffer.close()
 
-    return {
-        "statusCode": 200,
-        "headers": {
+    return Response(
+        pdf_bytes,
+        headers={
             "Content-Type": "application/pdf",
             "Content-Disposition": "inline; filename=addition_print.pdf"
-        },
-        "isBase64Encoded": True,
-        "body": base64.b64encode(pdf_bytes).decode("utf-8")
-    }
+        }
+    )
