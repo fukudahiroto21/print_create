@@ -34,7 +34,7 @@ def generate_pdf():
 
     # ===== 日本語フォント =====
     pdfmetrics.registerFont(TTFont("IPAexGothic", font_path))
-    c.setFont("IPAexGothic", 55)
+    c.setFont("IPAexGothic", 50)
 
     # ===== 問題生成（10問） =====
     problems = [
