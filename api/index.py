@@ -48,10 +48,10 @@ def generate_pdf():
     
     top_y = page_height - 140
     bottom_y = 120
-    row_gap = (top_y - bottom_y) / (rows - 1)
+    row_gap = (top_y - bottom_y) / (rows - 1) * 1.2
     
     start_x = 140
-    col_gap = 300
+    col_gap = 360
     
     # ===== 問題描画 =====
     for i, (a, b) in enumerate(problems, start=1):
