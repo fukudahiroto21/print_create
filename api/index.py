@@ -62,7 +62,7 @@ def generate_pdf():
         x = start_x + col * col_gap
         y = top_y - row * row_gap
         
-        c.drawString(x, y, f"({i}) {a} + {b}")
+        c.drawString(x, y, f"({i}) {a} + {b} =")
 
     # ===== PDF確定 =====
     c.showPage()
