@@ -50,7 +50,7 @@ def generate_pdf():
     bottom_y = 120
     row_gap = (top_y - bottom_y) / (rows - 1) * 1.2
     
-    start_x = 140
+    start_x = 90
     col_gap = 360
     
     # ===== 問題描画 =====
