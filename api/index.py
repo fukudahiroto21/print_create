@@ -59,7 +59,7 @@ def generate_pdf():
             y = top_y - row * row_gap
             
             # 問題番号を小さいフォントで描画（垂直中央揃え）
-            c.setFont("IPAexGothic", 24)
+            c.setFont("IPAexGothic", 10)
             number_text = f"({i})"
             number_width = c.stringWidth(number_text, "IPAexGothic", 24)
             y_offset = (40 - 24) / 3
