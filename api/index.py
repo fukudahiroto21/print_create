@@ -53,16 +53,26 @@ def generate_pdf():
     start_x = 90
     col_gap = 360
     
-    # ===== 問題描画 =====
-    for i, (a, b) in enumerate(problems, start=1):
-        index = i - 1
-        row = index % rows
-        col = index // rows
-
-        x = start_x + col * col_gap
-        y = top_y - row * row_gap
-        
-        c.drawString(x, y, f"({i}) {a} + {b} =")
+# ===== 問題描画 =====
+for i, (a, b) in enumerate(problems, start=1):
+    index = i - 1
+    row = index % rows
+    col = index // rows
+    x = start_x + col * col_gap
+    y = top_y - row * row_gap
+    
+    # 問題番号を小さいフォントで描画（垂直中央揃え）
+    c.setFont("IPAexGothic", 24)  # 小さいフォント
+    number_text = f"({i})"
+    number_width = c.stringWidth(number_text, "IPAexGothic", 24)
+    # 垂直中央揃えのためのオフセット（フォントサイズ40の中央に24を配置）
+    y_offset = (40 - 24) / 3  # 調整値
+    c.drawString(x, y + y_offset, number_text)
+    
+    # 問題本体を大きいフォントで描画
+    c.setFont("IPAexGothic", 40)  # 元のフォントサイズに戻す
+    problem_text = f" {a} + {b} ="
+    c.drawString(x + number_width, y, problem_text)
 
     # ===== PDF確定 =====
     c.showPage()
